@@ -1,0 +1,1 @@
+/// @description Room Star Event obj_controller_general

@@ -1,0 +1,87 @@
+/// @description Step Event obj_player
+
+if (!global.game_started) {
+    exit; 
+}
+
+// Handle size upgrade timer
+if (size_upgrade_active) {
+    size_upgrade_timer--;
+    
+    if (size_upgrade_timer <= 0) {
+        size_upgrade_active = false;
+        current_scale = base_scale;
+    }
+}
+
+// Apply current scale to sprite
+image_xscale = current_scale;
+image_yscale = current_scale;
+
+// Update Earth position (if it moves)
+earth_obj = instance_find(obj_earth, 0);
+if (earth_obj != noone) {
+    earth_x = earth_obj.x;
+    earth_y = earth_obj.y;
+}
+
+var key_left = keyboard_check(vk_left) || keyboard_check(ord("A"));
+var key_right = keyboard_check(vk_right) || keyboard_check(ord("D"));
+
+// Variável para detectar mudança de estado
+var was_moving = is_moving;
+
+if (key_left) {
+    // Counter-clockwise movement
+    orbit_angle += orbital_speed;
+    is_moving = true;
+} else if (key_right) {
+    // Clockwise movement
+    orbit_angle -= orbital_speed;
+    is_moving = true;
+} else {
+    is_moving = false;
+}
+
+if (orbit_angle >= 360) {
+    orbit_angle -= 360;
+} else if (orbit_angle < 0) {
+    orbit_angle += 360;
+}
+
+// Update position on Earth surface
+x = earth_x + lengthdir_x(orbit_radius, orbit_angle);
+y = earth_y + lengthdir_y(orbit_radius, orbit_angle);
+
+// Check collision with enemies
+var enemy = instance_place(x, y, obj_enemy_meat);
+if (enemy != noone) {
+    // Enemy will handle the collision and destruction
+}
+
+if (is_moving) {    
+    animation_timer += 0.2; 
+    
+    if (animation_timer >= 1) {
+        animation_timer = 0;
+        image_index++;
+        
+        // Faz loop: se chegou no último frame, volta pro primeiro
+        if (image_index >= image_number) {
+            image_index = 0;
+        }
+    }
+        
+    image_angle = orbit_angle - 90;
+    if (key_left) {
+        // Keep current scale but flip horizontally  
+        image_xscale = current_scale;
+    } else if (key_right) {
+        // Keep current scale but flip horizontally
+        image_xscale = -current_scale;
+    }
+} else {
+    // Para de andar
+    image_index = image_number - 1; 
+    image_angle = orbit_angle - 90;
+}
