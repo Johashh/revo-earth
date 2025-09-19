@@ -180,6 +180,7 @@
     {"id":{"name":"spr_earth","path":"sprites/spr_earth/spr_earth.yy",},},
     {"id":{"name":"spr_enemy","path":"sprites/spr_enemy/spr_enemy.yy",},},
     {"id":{"name":"spr_hear_box","path":"sprites/spr_hear_box/spr_hear_box.yy",},},
+    {"id":{"name":"spr_idle","path":"sprites/spr_idle/spr_idle.yy",},},
     {"id":{"name":"spr_left_heart","path":"sprites/spr_left_heart/spr_left_heart.yy",},},
     {"id":{"name":"spr_left_shield","path":"sprites/spr_left_shield/spr_left_shield.yy",},},
     {"id":{"name":"spr_mid_heart","path":"sprites/spr_mid_heart/spr_mid_heart.yy",},},

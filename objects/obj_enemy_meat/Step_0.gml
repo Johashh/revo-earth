@@ -30,7 +30,7 @@ x += move_x;
 y += move_y;
 
 // Rotate sprite to face movement direction
-image_angle = final_direction;
+image_angle += rotation_speed;
 
 // Check collision with player
 var player_obj = instance_find(obj_player, 0);

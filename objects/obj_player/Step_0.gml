@@ -28,17 +28,19 @@ if (earth_obj != noone) {
 var key_left = keyboard_check(vk_left) || keyboard_check(ord("A"));
 var key_right = keyboard_check(vk_right) || keyboard_check(ord("D"));
 
-// Variável para detectar mudança de estado
+
 var was_moving = is_moving;
 
 if (key_left) {
     // Counter-clockwise movement
     orbit_angle += orbital_speed;
     is_moving = true;
+    last_direction = 1; 
 } else if (key_right) {
     // Clockwise movement
     orbit_angle -= orbital_speed;
     is_moving = true;
+    last_direction = -1; 
 } else {
     is_moving = false;
 }
@@ -60,28 +62,46 @@ if (enemy != noone) {
 }
 
 if (is_moving) {    
+    if (sprite_index != spr_player) {
+        sprite_index = spr_player;
+        image_index = 0; 
+    }
+    
     animation_timer += 0.2; 
     
     if (animation_timer >= 1) {
         animation_timer = 0;
         image_index++;
-        
-        // Faz loop: se chegou no último frame, volta pro primeiro
+                
         if (image_index >= image_number) {
             image_index = 0;
         }
     }
         
     image_angle = orbit_angle - 90;
-    if (key_left) {
-        // Keep current scale but flip horizontally  
+    if (key_left) {        
         image_xscale = current_scale;
-    } else if (key_right) {
-        // Keep current scale but flip horizontally
+    } else if (key_right) {        
         image_xscale = -current_scale;
     }
 } else {
-    // Para de andar
-    image_index = image_number - 1; 
+    if (sprite_index != spr_idle) {
+        sprite_index = spr_idle;
+        image_index = 0; 
+    }
+    
+    // Idle
+    animation_timer += 0.1; 
+    
+    if (animation_timer >= 1) {
+        animation_timer = 0;
+        image_index++;
+                
+        if (image_index >= image_number) {
+            image_index = 0;
+        }
+    }
+        
+    image_xscale = current_scale * last_direction;
     image_angle = orbit_angle - 90;
 }

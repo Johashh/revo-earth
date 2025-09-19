@@ -1,7 +1,5 @@
 /// @description Create Event obj_enemy
 
-image_index = irandom_range(0, 5);
-
 // Target the Earth
 earth_obj = instance_find(obj_earth, 0);
 if (earth_obj != noone) {
@@ -22,6 +20,14 @@ zigzag_timer = 0;
 zigzag_amplitude = 50; // How far to zigzag
 zigzag_frequency = 0.1; // How fast to zigzag
 original_direction = direction_to_target;
+
+rotation_speed = random_range(-2, 2); 
+
+scale_variation = random_range(-30, 30); 
+base_size = sprite_width; 
+new_scale = (base_size + scale_variation) / base_size; 
+image_xscale = new_scale;
+image_yscale = new_scale; 
 
 // Health/collision
 hp = 1;

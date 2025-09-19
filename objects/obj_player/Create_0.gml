@@ -2,6 +2,8 @@
 
 animation_timer = 0;
 
+last_direction = 1;
+
 earth_obj = instance_find(obj_earth, 0);
 if (earth_obj != noone) {
     earth_x = earth_obj.x;
