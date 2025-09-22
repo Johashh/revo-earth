@@ -1,5 +1,9 @@
 /// @description Step Event obj_controller_general
 
+if (room != rm_game) {
+    exit;
+}
+
 if (!fade_complete) {
     fade_timer++;
     fade_alpha = max(0, 1.0 - (fade_timer / fade_duration));
@@ -84,32 +88,27 @@ for (var i = array_length(shield_parts_falling) - 1; i >= 0; i--) {
 }
 
 // Game over input
-if ((game_over && keyboard_check_pressed(vk_space)) or keyboard_check_released(ord("R"))) {
-	init_game();	
-	init_spawn();
-	init_health();
-	calculate_spawn_interval();
-	
-    initialize_all_globals();
-    room_restart();
+if (game_over) {
+    if (keyboard_check_pressed(vk_space)) {
+        // Restart game
+        init_game();	
+        init_spawn();
+        init_health();
+        calculate_spawn_interval();
+        
+        initialize_all_globals();
+        room_restart();
+    }
+        
+    if (keyboard_check_pressed(vk_escape)) {
+        // Reset all variables
+        init_game();	
+        init_spawn();
+        init_health();
+        calculate_spawn_interval();
+        
+        initialize_all_globals();
+        room_goto(rm_main_menu);
+    }
 }
 
-//// Controls
-//if (keyboard_check_pressed(ord("Q"))) {
-//    global.moon_speed_multiplier += 0.5;
-//    global.moon_speed_multiplier = min(global.moon_speed_multiplier, 5.0);
-//}
-
-//if (keyboard_check_pressed(ord("E"))) {
-//    global.moon_speed_multiplier -= 0.5;
-//    global.moon_speed_multiplier = max(global.moon_speed_multiplier, 0.1);
-//}
-
-//// Invert logic
-//if (keyboard_check_pressed(ord("R"))) {    
-//    if (global.moon_direction_override <= 0) {
-//        global.moon_direction_override = 1;  // Clockwise
-//    } else {
-//        global.moon_direction_override = -1; // Counter-clockwise
-//    }
-//}

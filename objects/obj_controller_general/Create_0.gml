@@ -2,6 +2,8 @@
 
 randomize();
 
+should_restar_game = false;
+
 function init_game(){
 	fade_alpha = 1.0;
 	fade_duration = game_get_speed(gamespeed_fps);
@@ -13,6 +15,7 @@ function init_game(){
 	earth_obj = noone;
 	moon_objs = array_create(0);
 	shop_itens = ["speed", "shield", "size"];	
+	is_in_game_room = false;
 }
 
 init_game();
@@ -22,24 +25,26 @@ init_game();
 	function init_spawn(){
 	    current_wave = 1;
 	    wave_timer = 0;
-	    wave_duration = 30 * game_get_speed(gamespeed_fps);  
+	    wave_duration = 10 * game_get_speed(gamespeed_fps);  
 	    spawn_duration = 25 * game_get_speed(gamespeed_fps); 
 	    enemies_spawned = 0;
-	    enemies_per_wave = 10;
+	    enemies_per_wave = 100;
 	    enemy_spawn_timer = 0;
 	    enemy_spawn_interval = 0;
 
-	    player_gold = 50; 
+	    player_gold = 150; 
+		final_score = 0;
 
 	    shop_open = false;
 	    shop_mouse_over = -1;
     
 	    // Shop items system
-	    shop_items = ["speed", "shield", "size"];
+	    shop_items = ["speed", "shield", "size", "resistance"];
 	    shop_selected_items = array_create(3);
     
 	    // Size upgrade system
 	    size_upgrade_pending = false;
+		resistance_level = 0;
 
 	    zigzag_chance = 0; 
 	    zigzag_active = false;
@@ -101,21 +106,35 @@ init_game();
 	function end_wave() {
 	    shop_open = true;
 	    current_wave++;
-    
+
 	    wave_timer = 0; 
 	    enemies_spawned = 0;
+	    
+	    var available_items = [];
+	    array_push(available_items, "speed");
+	    array_push(available_items, "shield");
+	    array_push(available_items, "size");
+    	    
+	    if (resistance_level < 2) {
+	        array_push(available_items, "resistance");
+	    }
+    	   
+	    shop_selected_items = array_create(3);
+	    var available_copy = array_create(array_length(available_items));
+	    array_copy(available_copy, 0, available_items, 0, array_length(available_items));
     
-	    // Copy all available items to selected items (for now)
 	    for (var i = 0; i < 3; i++) {
-	        shop_selected_items[i] = shop_items[i];
+	        if (array_length(available_copy) > 0) {
+	            var random_index = irandom(array_length(available_copy) - 1);
+	            shop_selected_items[i] = available_copy[random_index];
+	            array_delete(available_copy, random_index, 1); 
+	        }
 	    }
-    
+
 	    calculate_spawn_interval();
-    
-	    if (current_wave <= 3) {
-	        enemies_per_wave += 2;
-	    }
-    
+
+	    enemies_per_wave += 4;
+
 	    if (current_wave >= 4 && (current_wave - 4) % 3 == 0) {
 	        zigzag_chance = min(zigzag_chance + 1, 25);
 	    }
@@ -126,45 +145,48 @@ init_game();
 	    var mouse_gui_y = device_mouse_y_to_gui(0);    	    
 	    var gui_w = display_get_gui_width();
 	    var gui_h = display_get_gui_height();
-	    var shop_w = 600;
-	    var shop_h = 200;
-	    var shop_x = gui_w/2 - shop_w/2;
-	    var shop_y = gui_h/2 - shop_h/2;
-    
-	    var total_items = 3;
-	    var item_w = 120;
-	    var item_h = 60;
-	    var available_width = shop_w - 40;
-	    var spacing = (available_width - (total_items * item_w)) / (total_items + 1);
-    
+
+	    var shop_x = gui_w/2; 
+	    var shop_y = gui_h/2;
+
+	    // Menu box dimensions for upgrade boxes
+	    var box_w = sprite_get_width(spr_menu_button);
+	    var box_h = sprite_get_height(spr_menu_button);
+	    var spacing = 100;  
+    	    
+	    var box_positions = [
+	        { x: shop_x - box_w/2 - spacing, y: shop_y + 100 },  // Bottom left
+	        { x: shop_x + box_w/2 + spacing, y: shop_y + 100 },  // Bottom right  
+	        { x: shop_x, y: shop_y - 40 }                       // Top center
+	    ];
+
 	    shop_mouse_over = -1;
-    
-	    for (var i = 0; i < total_items; i++) {
-	        var item_x = shop_x + 20 + spacing + (i * (item_w + spacing));
-	        var item_y = shop_y + 80;
+
+	    for (var i = 0; i < 3; i++) {
+	        var pos = box_positions[i];
         
-	        if (point_in_rectangle(mouse_gui_x, mouse_gui_y, item_x, item_y, item_x + item_w, item_y + item_h)) {
+	        if (point_in_rectangle(mouse_gui_x, mouse_gui_y, 
+	                              pos.x - box_w/2, pos.y - box_h/2, 
+	                              pos.x + box_w/2, pos.y + box_h/2)) {
 	            shop_mouse_over = i;
-            
 	            if (mouse_check_button_pressed(mb_left)) {
 	                buy_shop_item(i);
 	            }
 	        }
 	    }
-    
+
 	    if (keyboard_check_pressed(vk_escape)) {
 	        close_shop();
 	    }
 	}
 
 	function buy_shop_item(item_id) {
-	    var cost = 50; 
-    
+	    var item_type = shop_selected_items[item_id];
+	    var cost = get_item_cost(item_type);
+
 	    if (player_gold >= cost) {
 	        player_gold -= cost;
-        
-	        var item_type = shop_selected_items[item_id];
-        
+
 	        switch(item_type) {
 	            case "speed":
 	                if (instance_exists(obj_player)) {
@@ -177,17 +199,37 @@ init_game();
 	            case "size":	                
 	                size_upgrade_pending = true;
 	                break;
+	            case "resistance":
+	                resistance_level++;
+	                damage_to_apply = max(1, damage_to_apply - 1); 
+	                break;
 	        }
-        
+
 	        close_shop();
+	    }
+	}
+	
+	function get_item_cost(item_type) {
+	    switch(item_type) {
+	        case "speed": return 50;
+	        case "shield": return 50;
+	        case "size": return 50;
+	        case "resistance": 
+	            if (resistance_level == 0) return 150;
+	            else if (resistance_level == 1) return 300;
+	            return 999999; 
+	        default: return 50;
 	    }
 	}
 		
 	function get_item_description(item_type) {
 	    switch(item_type) {
 	        case "speed": return "Increases player speed";
-	        case "shield": return "Grants 1 shield";
+	        case "shield": return "Grants 3 shield points";
 	        case "size": return "Temporarily increases player size";
+	        case "resistance": 
+	            var next_damage = max(1, damage_to_apply - 1);
+	            return "Reduces enemy damage from " + string(damage_to_apply) + " to " + string(next_damage);
 	        default: return "Unknown upgrade";
 	    }
 	}
@@ -222,7 +264,8 @@ init_game();
 	    game_over = false;
 	    total_game_timer = 0;    	    
 	    heart_parts_falling = array_create(0);
-    	    
+    	damage_to_apply = 3;    
+		
 	    shield_max = 9.0;  
 	    shield_current = 3.0; 
 	    shield_parts_falling = array_create(0);
@@ -233,26 +276,38 @@ init_game();
 	function damage_planet(damage_amount) {
 	    if (game_over) return;
     
-	    var damage_to_apply = 1; 
-    	    
 	    if (shield_current > 0) {	        
-	        shield_current -= damage_to_apply;
 	        create_falling_shield_part();
         	        
+	        shield_current -= damage_to_apply;
+        
 	        if (shield_current < 0) {
 	            var overflow_damage = abs(shield_current);
 	            shield_current = 0;
-            	            
-	            planet_health -= overflow_damage;
-	            planet_health = max(0, planet_health);
-	            create_falling_heart_part();
+            
+	            if (overflow_damage > 0) {	                
+	                var original_damage = damage_to_apply;
+	                damage_to_apply = overflow_damage; 
+                
+	                create_falling_heart_part();
+                
+	                damage_to_apply = original_damage;
+                
+	                planet_health -= overflow_damage;
+	                planet_health = max(0, planet_health);
+	            }
 	        }
 	    } else {	        
+	        create_falling_heart_part();
+        	        
 	        planet_health -= damage_to_apply;
 	        planet_health = max(0, planet_health);
-	        create_falling_heart_part();
 	    }
-    
+		
+		if (instance_exists(obj_earth)) {
+	        obj_earth.update_earth_sprite();
+	    }
+		
 	    if (planet_health <= 0) {
 	        trigger_game_over();
 	    }
@@ -360,80 +415,50 @@ init_game();
 	    return false;
 	}
 
-	function create_falling_heart_part() {	    
-	    var total_parts_remaining = planet_health;
+	function create_falling_heart_part() {
+	    var actual_damage = min(damage_to_apply, planet_health);
     
-	    // Find which heart and part to remove
-	    var heart_index, part_index;
-    
-	    if (total_parts_remaining >= 6) {
-	        // Heart 2 (rightmost) has parts to lose
-	        heart_index = 2;
-	        if (total_parts_remaining == 8) part_index = 2; 
-	        else if (total_parts_remaining == 7) part_index = 1; 
-	        else part_index = 0; 
-	    } else if (total_parts_remaining >= 3) {
-	        // Heart 1 (middle) has parts to lose
-	        heart_index = 1;
-	        if (total_parts_remaining == 5) part_index = 2; 
-	        else if (total_parts_remaining == 4) part_index = 1; 
-	        else part_index = 0; 
-	    } else {
-	        // Heart 0 (leftmost) has parts to lose
-	        heart_index = 0;
-	        if (total_parts_remaining == 2) part_index = 2; 
-	        else if (total_parts_remaining == 1) part_index = 1; 
-	        else part_index = 0; 
+	    for (var d = 0; d < actual_damage; d++) {
+	        var health_before_this_damage = planet_health - d;
+        	        
+	        var zero_based_health = health_before_this_damage - 1; // 0-8
+	        var heart_index = floor(zero_based_health / 3); // 0, 1, ou 2
+	        var part_index = zero_based_health % 3; // 0, 1, ou 2
+
+	        var part_data = {
+	            heart_index: heart_index,
+	            part_index: part_index,
+	            y_pos: display_get_gui_height() - 60,
+	            alpha: 1.0,
+	            timer: 0,
+	            fall_duration: game_get_speed(gamespeed_fps) * 0.5
+	        };
+
+	        array_push(heart_parts_falling, part_data);
 	    }
-    
-	    var part_data = {
-	        heart_index: heart_index,
-	        part_index: part_index,
-	        y_pos: display_get_gui_height() - 60,
-	        alpha: 1.0,
-	        timer: 0,
-	        fall_duration: game_get_speed(gamespeed_fps) * 0.5
-	    };
-    
-	    array_push(heart_parts_falling, part_data);
 	}
-		
+
 	function create_falling_shield_part() {
-	    var total_shield_remaining = shield_current;
+	    var actual_damage = min(damage_to_apply, shield_current);
     
-	    // Find which heart and part to remove
-	    var heart_index, part_index;
-    
-		// Heart 2 (rightmost) has shield parts to lose
-	    if (total_shield_remaining >= 6) {	        
-	        heart_index = 2;
-	        if (total_shield_remaining == 8) part_index = 2; 
-	        else if (total_shield_remaining == 7) part_index = 1; 
-	        else part_index = 0; 
-	    } else if (total_shield_remaining >= 3) {
-	        // Heart 1 (middle) has shield parts to lose
-	        heart_index = 1;
-	        if (total_shield_remaining == 5) part_index = 2; 
-	        else if (total_shield_remaining == 4) part_index = 1; 
-	        else part_index = 0; 
-	    } else {
-	        // Heart 0 (leftmost) has shield parts to lose
-	        heart_index = 0;
-	        if (total_shield_remaining == 2) part_index = 2; 
-	        else if (total_shield_remaining == 1) part_index = 1; 
-	        else part_index = 0; 
+	    for (var d = 0; d < actual_damage; d++) {
+	        var shield_before_this_damage = shield_current - d;
+        	        
+	        var zero_based_shield = shield_before_this_damage - 1; // 0-8
+	        var heart_index = floor(zero_based_shield / 3); // 0, 1, ou 2
+	        var part_index = zero_based_shield % 3; // 0, 1, ou 2
+
+	        var part_data = {
+	            heart_index: heart_index,
+	            part_index: part_index,
+	            y_pos: display_get_gui_height() - 60,
+	            alpha: 1.0,
+	            timer: 0,
+	            fall_duration: game_get_speed(gamespeed_fps) * 0.5
+	        };
+
+	        array_push(shield_parts_falling, part_data);
 	    }
-    
-	    var part_data = {
-	        heart_index: heart_index,
-	        part_index: part_index,
-	        y_pos: display_get_gui_height() - 60,
-	        alpha: 1.0,
-	        timer: 0,
-	        fall_duration: game_get_speed(gamespeed_fps) * 0.5
-	    };
-    
-	    array_push(shield_parts_falling, part_data);
 	}
 
 	function draw_heart_part(x, y, part_type) {
@@ -477,8 +502,101 @@ init_game();
 	function trigger_game_over() {
 	    game_over = true;
 	    global.game_started = false;
+    
+	    var waves_survived = current_wave - 1;
+	    var time_seconds = floor(total_game_timer / 60);
+	    final_score = (waves_survived * 100) + time_seconds + player_gold;
+    	    
+	    save_high_score(final_score, waves_survived, time_seconds, player_gold);
+    	    
+	    global.total_games++;
+    
+	    var time = floor(total_game_timer / 60);
+	    if (time > global.best_time) {
+	        global.best_time = time;
+	    }
+    
+	    if (current_wave > global.best_wave) {
+	        global.best_wave = current_wave;
+	    }
 	}
 
+	function save_high_score(score, waves, time_seconds, gold) {
+	    var score_entry = {
+	        score: score,
+	        waves: waves,
+	        time: time_seconds,
+	        gold: gold
+	    };
+    
+	    array_push(global.game_scores, score_entry);
+    
+	    array_sort(global.game_scores, function(a, b) {
+	        return b.score - a.score;
+	    });
+    
+	    if (array_length(global.game_scores) > 3) {
+	        array_resize(global.game_scores, 3);
+	    }
+    	    
+	    save_scores_to_file();
+    
+	    show_debug_message("Score saved: " + string(score) + " (Total scores: " + string(array_length(global.game_scores)) + ")");
+	}   
+
 #endregion
+
+#region SAVE/LOAD
+
+	function save_scores_to_file() {
+	    var filename = "game_scores.json";
+	    var file_path = working_directory + filename;
+    
+	    try {
+	        var json_string = json_stringify(global.game_scores);
+	        var file = file_text_open_write(file_path);
+	        file_text_write_string(file, json_string);
+	        file_text_close(file);
+        
+	        show_debug_message("Scores saved successfully to: " + file_path);
+	    } catch(e) {
+	        show_debug_message("Error saving scores: " + string(e));
+	    }
+	}
+
+	function load_scores_from_file() {
+	    var filename = "game_scores.json";
+	    var file_path = working_directory + filename;
+    
+	    if (file_exists(file_path)) {
+	        try {
+	            var file = file_text_open_read(file_path);
+	            var json_string = "";
+            
+	            while (!file_text_eof(file)) {
+	                json_string += file_text_read_string(file);
+	                file_text_readln(file);
+	            }
+            
+	            file_text_close(file);
+            
+	            if (json_string != "") {
+	                global.game_scores = json_parse(json_string);
+	                show_debug_message("Scores loaded successfully: " + string(array_length(global.game_scores)) + " entries");
+	            } else {
+	                global.game_scores = [];
+	                show_debug_message("Empty file, initializing empty scores array");
+	            }
+	        } catch(e) {
+	            show_debug_message("Error loading scores: " + string(e));
+	            global.game_scores = [];
+	        }
+	    } else {
+	        global.game_scores = [];
+	        show_debug_message("No scores file found, starting with empty array");
+	    }
+	}
+
+#endregion 
 
 calculate_spawn_interval();

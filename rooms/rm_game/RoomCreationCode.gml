@@ -5,7 +5,7 @@ var earth_y = room_height/2;
 
 // Create player on Earth surface
 var earth_half_height = sprite_get_height(spr_earth) / 2;
-var player_half_height = sprite_get_height(spr_player) / 2;
+var player_half_height = sprite_get_height(spr_player) / 2 - 50;
 var surface_distance = earth_half_height + player_half_height;
 var player_obj = instance_create_layer(earth_x, earth_y - surface_distance, "Instances", obj_player);
 player_obj.orbit_radius = surface_distance;

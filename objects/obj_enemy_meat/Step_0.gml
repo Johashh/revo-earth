@@ -36,11 +36,13 @@ image_angle += rotation_speed;
 var player_obj = instance_find(obj_player, 0);
 if (player_obj != noone) {
     if (distance_to_object(player_obj) < 20) {        
+        player_obj.start_eating();
+        
         with(obj_controller_general) {
             player_gold += other.gold_value;
         }
                 
-        instance_destroy();
+        instance_destroy(); 
         exit;
     }
 }
