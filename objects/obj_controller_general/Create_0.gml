@@ -3,6 +3,7 @@
 randomize();
 
 should_restar_game = false;
+shockwave_cooldown_max = game_get_speed(gamespeed_fps) * 40;
 
 function init_game(){
 	fade_alpha = 1.0;
@@ -16,6 +17,7 @@ function init_game(){
 	moon_objs = array_create(0);
 	shop_itens = ["speed", "shield", "size"];	
 	is_in_game_room = false;
+	shockwave_cooldown_current = 0;
 }
 
 init_game();
@@ -25,10 +27,10 @@ init_game();
 	function init_spawn(){
 	    current_wave = 1;
 	    wave_timer = 0;
-	    wave_duration = 10 * game_get_speed(gamespeed_fps);  
+	    wave_duration = 30 * game_get_speed(gamespeed_fps);  
 	    spawn_duration = 25 * game_get_speed(gamespeed_fps); 
 	    enemies_spawned = 0;
-	    enemies_per_wave = 100;
+	    enemies_per_wave = 10;
 	    enemy_spawn_timer = 0;
 	    enemy_spawn_interval = 0;
 
@@ -186,6 +188,8 @@ init_game();
 
 	    if (player_gold >= cost) {
 	        player_gold -= cost;
+        
+	        audio_play_sound(snd_purchase, 1, false);
 
 	        switch(item_type) {
 	            case "speed":
@@ -196,7 +200,7 @@ init_game();
 	            case "shield":
 	                shield_current += 3; 
 	                break;
-	            case "size":	                
+	            case "size":                
 	                size_upgrade_pending = true;
 	                break;
 	            case "resistance":
@@ -314,30 +318,36 @@ init_game();
 	}
 		
 	function draw_planet_hearts() {
-	    var start_x = 20;
-	    var start_y = display_get_gui_height() - 60;
+	    var box_sprite_w = sprite_get_width(spr_heart_box);
+	    var box_sprite_h = sprite_get_height(spr_heart_box);
+    
+	    var box_x = 20 + box_sprite_w/2;
+	    var box_y = display_get_gui_height() - 20 - box_sprite_h/2;
+    
+	    draw_sprite(spr_heart_box, 0, box_x, box_y);
+    
 	    var heart_part_width = sprite_get_width(spr_left_heart);
 	    var full_heart_width = heart_part_width * 3;
 	    var heart_spacing = 20;
     
-	    // Draw hearts for each of the 3 heart positions
+	    var hearts_start_x = box_x - box_sprite_w/2 + 30;
+	    var hearts_y = box_y;
+    
 	    for (var i = 0; i < 3; i++) {
-	        var heart_x = start_x + (i * (full_heart_width + heart_spacing));
+	        var heart_x = hearts_start_x + (i * (full_heart_width + heart_spacing));
         
-	        // Draw heart parts based on current health
 	        var parts_for_this_heart = max(0, min(3, planet_health - (i * 3)));
         
 	        if (parts_for_this_heart >= 1 && !is_part_falling(i, 0)) {
-	            draw_heart_part(heart_x, start_y, "left");
+	            draw_heart_part(heart_x, hearts_y, "left");
 	        }
 	        if (parts_for_this_heart >= 2 && !is_part_falling(i, 1)) {
-	            draw_heart_part(heart_x + heart_part_width, start_y, "mid");
+	            draw_heart_part(heart_x + heart_part_width, hearts_y, "mid");
 	        }
 	        if (parts_for_this_heart >= 3 && !is_part_falling(i, 2)) {
-	            draw_heart_part(heart_x + (heart_part_width * 2), start_y, "right");
+	            draw_heart_part(heart_x + (heart_part_width * 2), hearts_y, "right");
 	        }
         
-	        // Draw shield parts on any heart that has shields
 	        var shield_parts_for_heart = max(0, min(3, shield_current - (i * 3)));
         
 	        if (shield_parts_for_heart > 0) {
@@ -345,21 +355,20 @@ init_game();
 	            var shield_part_width = sprite_get_width(spr_mid_shield);
             
 	            if (shield_parts_for_heart >= 1 && !is_shield_part_falling(i, 0)) {
-	                draw_shield_part(heart_mid_x - shield_part_width, start_y, "left");
+	                draw_shield_part(heart_mid_x - shield_part_width, hearts_y, "left");
 	            }
 	            if (shield_parts_for_heart >= 2 && !is_shield_part_falling(i, 1)) {
-	                draw_shield_part(heart_mid_x, start_y, "mid");
+	                draw_shield_part(heart_mid_x, hearts_y, "mid");
 	            }
 	            if (shield_parts_for_heart >= 3 && !is_shield_part_falling(i, 2)) {
-	                draw_shield_part(heart_mid_x + shield_part_width, start_y, "right");
+	                draw_shield_part(heart_mid_x + shield_part_width, hearts_y, "right");
 	            }
 	        }
 	    }
     
-	    // Draw falling heart parts
 	    for (var i = 0; i < array_length(heart_parts_falling); i++) {
 	        var part = heart_parts_falling[i];
-	        var heart_x = start_x + (part.heart_index * (full_heart_width + heart_spacing));
+	        var heart_x = hearts_start_x + (part.heart_index * (full_heart_width + heart_spacing));
 	        var part_x = heart_x + (part.part_index * heart_part_width);
         
 	        draw_set_alpha(part.alpha);
@@ -375,10 +384,9 @@ init_game();
 	        draw_set_alpha(1.0);
 	    }
     
-	    // Draw falling shield parts
 	    for (var i = 0; i < array_length(shield_parts_falling); i++) {
 	        var part = shield_parts_falling[i];
-	        var heart_x = start_x + (part.heart_index * (full_heart_width + heart_spacing));
+	        var heart_x = hearts_start_x + (part.heart_index * (full_heart_width + heart_spacing));
 	        var heart_mid_x = heart_x + heart_part_width;
 	        var shield_part_width = sprite_get_width(spr_mid_shield);
         
@@ -418,17 +426,20 @@ init_game();
 	function create_falling_heart_part() {
 	    var actual_damage = min(damage_to_apply, planet_health);
     
+	    var box_sprite_h = sprite_get_height(spr_heart_box);
+	    var initial_y = display_get_gui_height() - 20 - box_sprite_h/2;
+    
 	    for (var d = 0; d < actual_damage; d++) {
 	        var health_before_this_damage = planet_health - d;
-        	        
-	        var zero_based_health = health_before_this_damage - 1; // 0-8
-	        var heart_index = floor(zero_based_health / 3); // 0, 1, ou 2
-	        var part_index = zero_based_health % 3; // 0, 1, ou 2
+        
+	        var zero_based_health = health_before_this_damage - 1;
+	        var heart_index = floor(zero_based_health / 3);
+	        var part_index = zero_based_health % 3;
 
 	        var part_data = {
 	            heart_index: heart_index,
 	            part_index: part_index,
-	            y_pos: display_get_gui_height() - 60,
+	            y_pos: initial_y,
 	            alpha: 1.0,
 	            timer: 0,
 	            fall_duration: game_get_speed(gamespeed_fps) * 0.5
@@ -441,17 +452,20 @@ init_game();
 	function create_falling_shield_part() {
 	    var actual_damage = min(damage_to_apply, shield_current);
     
+	    var box_sprite_h = sprite_get_height(spr_heart_box);
+	    var initial_y = display_get_gui_height() - 20 - box_sprite_h/2;
+    
 	    for (var d = 0; d < actual_damage; d++) {
 	        var shield_before_this_damage = shield_current - d;
-        	        
-	        var zero_based_shield = shield_before_this_damage - 1; // 0-8
-	        var heart_index = floor(zero_based_shield / 3); // 0, 1, ou 2
-	        var part_index = zero_based_shield % 3; // 0, 1, ou 2
+        
+	        var zero_based_shield = shield_before_this_damage - 1;
+	        var heart_index = floor(zero_based_shield / 3);
+	        var part_index = zero_based_shield % 3;
 
 	        var part_data = {
 	            heart_index: heart_index,
 	            part_index: part_index,
-	            y_pos: display_get_gui_height() - 60,
+	            y_pos: initial_y,
 	            alpha: 1.0,
 	            timer: 0,
 	            fall_duration: game_get_speed(gamespeed_fps) * 0.5
@@ -503,12 +517,14 @@ init_game();
 	    game_over = true;
 	    global.game_started = false;
     
+	    audio_stop_sound(snd_game_music);
+    
 	    var waves_survived = current_wave - 1;
 	    var time_seconds = floor(total_game_timer / 60);
 	    final_score = (waves_survived * 100) + time_seconds + player_gold;
-    	    
+    
 	    save_high_score(final_score, waves_survived, time_seconds, player_gold);
-    	    
+    
 	    global.total_games++;
     
 	    var time = floor(total_game_timer / 60);

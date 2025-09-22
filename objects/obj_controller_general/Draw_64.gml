@@ -21,14 +21,38 @@ if (show_start_prompt) {
     draw_rectangle(0, 0, gui_w, gui_h, false);
     draw_set_alpha(1.0);
     
-    // Start message using Scribble
-    var message_text = "[fnt_start_message][fa_center][fa_middle][c_white]Click anywhere to start";
-    var text_element = scribble(message_text);
-    text_element.draw(gui_w/2, gui_h/2 - 40);
+    // Main start message - moved much higher
+    var start_text = "[fnt_start_message][fa_center][fa_middle][c_white]CLICK ANYWHERE TO START";
+    scribble(start_text).draw(gui_w/2, gui_h/2 - 200);
     
-    // Score explanation 
-    var score_text = "[fnt_start_message][fa_center][fa_middle][c_yellow]Your final score is calculated based on\ntime survived, waves completed and remaining gold";
-    scribble(score_text).draw(gui_w/2, gui_h/2 + 60);
+    // Score calculation info - moved higher
+    var score_text = "[fnt_start_message][fa_center][fa_middle][c_yellow]YOUR FINAL SCORE IS CALCULATED BASED ON\nTIME SURVIVED, WAVES COMPLETED AND REMAINING GOLD";
+    scribble(score_text).draw(gui_w/2, gui_h/2 - 100);
+    
+    // Controls info - positioned below score text
+    var controls_text = "[fnt_start_message][fa_center][fa_middle][c_lime]CONTROLS\n[c_white]Left/Right Arrows or A/D - Move player";
+    scribble(controls_text).draw(gui_w/2, gui_h/2 + 100);
+    
+    // Shockwave info with icon reference - positioned below controls
+    var shockwave_text = "[fnt_start_message][fa_center][fa_middle][c_white]SPACE - Activate Shockwave\n(Available when icon below is animated)";
+    scribble(shockwave_text).draw(gui_w/2, gui_h/2 + 240);
+    
+    // Draw small shockwave icon as reference - positioned at bottom
+    var icon_ref_x = gui_w/2;
+    var icon_ref_y = gui_h/2 + 120;
+    var sprite_w = sprite_get_width(spr_shockwave);
+    var sprite_h = sprite_get_height(spr_shockwave);
+    var ref_size = 60;
+    var ref_scale_x = ref_size / sprite_w;
+    var ref_scale_y = ref_size / sprite_h;
+    
+    // Animate the reference icon
+    var animation_speed = 8;
+    var frame_count = sprite_get_number(spr_shockwave);
+    var time_per_frame = game_get_speed(gamespeed_fps) / animation_speed;
+    var current_frame = floor((get_timer() / 1000000 * game_get_speed(gamespeed_fps)) / time_per_frame) % frame_count;
+    
+    draw_sprite_ext(spr_shockwave, current_frame, icon_ref_x, gui_h/2 + 400, ref_scale_x, ref_scale_y, 0, c_white, 1.0);
 }
 
 if (game_ready && !shop_open && !game_over) {
@@ -156,9 +180,58 @@ if (game_over) {
                     "\nFinal Score: " + string(final_score);
     
     scribble(stats_text).draw(gui_w/2, gui_h/2 - 200);  
-    
-    // NOVO: Comandos atualizados (BELOW the game over sprite)
+        
     var restart_text = "[fnt_start_message][fa_center][fa_middle][c_white]Press SPACE to restart\nPress ESC to return to main menu";
     
     scribble(restart_text).draw(gui_w/2, gui_h/2 + 220);  
+}
+
+// Draw shockwave cooldown icon
+if (global.game_started && !game_over && !shop_open) {
+    var icon_x = room_width / 2;
+    var icon_y = room_height - 120;
+    
+    // Calculate scale to make it 100x100
+    var sprite_w = sprite_get_width(spr_shockwave);
+    var sprite_h = sprite_get_height(spr_shockwave);
+    var target_size = 100;
+    var scale_x = target_size / sprite_w;
+    var scale_y = target_size / sprite_h;
+    
+    if (shockwave_cooldown_current <= 0) {
+        // Ready - animate the icon using get_timer() for smooth animation
+        var animation_speed = 8; // fps
+        var frame_count = sprite_get_number(spr_shockwave);
+        var time_per_frame = game_get_speed(gamespeed_fps) / animation_speed;
+        var current_frame = floor((get_timer() / 1000000 * game_get_speed(gamespeed_fps)) / time_per_frame) % frame_count;
+        
+        draw_sprite_ext(spr_shockwave, current_frame, icon_x, icon_y, scale_x, scale_y, 0, c_white, 1.0);
+    } else {
+        // On cooldown - draw first frame only
+        draw_sprite_ext(spr_shockwave, 0, icon_x, icon_y, scale_x, scale_y, 0, c_white, 1.0);
+        
+        // Draw cooldown overlay (top to bottom)
+        var cooldown_progress = shockwave_cooldown_current / shockwave_cooldown_max;
+        var overlay_height = target_size * cooldown_progress;
+        
+        // Calculate overlay position (top-left corner of the icon)
+        var overlay_x = icon_x - (target_size / 2);
+        var overlay_y = icon_y - (target_size / 2);
+        
+        // Draw part of the overlay sprite from top
+        if (overlay_height > 0) {
+            var overlay_sprite_h = sprite_get_height(spr_square_cooldown);
+            var overlay_scale_x = target_size / sprite_get_width(spr_square_cooldown);
+            
+            // Use draw_sprite_part_ext to draw only the top portion
+            var source_h = (overlay_height / target_size) * overlay_sprite_h;
+            
+            draw_sprite_part_ext(spr_square_cooldown, 0, 
+                               0, 0, // source x, y
+                               sprite_get_width(spr_square_cooldown), source_h, // source width, height
+                               overlay_x, overlay_y, // destination x, y
+                               overlay_scale_x, 1, // scale x, y
+                               c_white, 0.6); // color, alpha (semi-transparent)
+        }
+    }
 }

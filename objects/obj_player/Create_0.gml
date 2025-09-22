@@ -36,4 +36,6 @@ function start_eating() {
     eating_timer = 0;
     sprite_index = spr_player_eating;
     image_index = 0;
+    
+    audio_play_sound(snd_chomp, 1, false);
 }

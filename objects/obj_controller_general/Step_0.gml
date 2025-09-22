@@ -14,13 +14,16 @@ if (!fade_complete) {
     }        
 }
 
+// Start game
 if (show_start_prompt && !game_ready) {
     if (mouse_check_button_released(mb_left)) {
         show_start_prompt = false;
         game_ready = true;
         global.game_started = true;
         
-        // Enable moon movement
+        audio_play_sound(snd_game_music, 1, true);
+        audio_sound_gain(snd_game_music, global.game_volume * 0.7, 0);
+        
         for (var i = 0; i < array_length(moon_objs); i++) {
             if (instance_exists(moon_objs[i])) {
                 moon_objs[i].is_moving = true;
@@ -87,6 +90,18 @@ for (var i = array_length(shield_parts_falling) - 1; i >= 0; i--) {
     }
 }
 
+// Activate shockwave
+if (keyboard_check_pressed(vk_space) && global.game_started && !game_over) {
+    if (shockwave_cooldown_current <= 0) {    		
+        instance_create_layer(0, 0, "Instances", obj_shockwave);
+        
+        shockwave_cooldown_current = shockwave_cooldown_max;
+                
+    } else {
+        var seconds_left = ceil(shockwave_cooldown_current / game_get_speed(gamespeed_fps));        
+    }
+}
+
 // Game over input
 if (game_over) {
     if (keyboard_check_pressed(vk_space)) {
@@ -112,3 +127,6 @@ if (game_over) {
     }
 }
 
+if (shockwave_cooldown_current > 0) {
+    shockwave_cooldown_current--;
+}
