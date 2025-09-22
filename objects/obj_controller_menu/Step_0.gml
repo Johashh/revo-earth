@@ -6,10 +6,39 @@ if (!fade_complete && !transitioning) {
     
     if (fade_timer >= fade_duration) {
         fade_complete = true;
-        audio_play_sound(snd_game_music, 1, true);
-        audio_sound_gain(snd_game_music, global.game_volume * 0.7, 0);
+        if (!show_intro_story) {
+            audio_play_sound(snd_game_music, 1, true);
+            audio_sound_gain(snd_game_music, global.game_volume * 0.7, 0);
+        }
     }
     return; 
+}
+
+// Handle intro story
+if (show_intro_story && fade_complete) {
+    if (!intro_text_complete) {
+        // Wait for typewriter to complete automatically
+        // Scribble will handle the typewriter effect
+        return;
+    } else if (intro_wait_timer < intro_wait_duration) {
+        intro_wait_timer++;
+        return;
+    } else {
+        // Allow click to proceed
+        if (mouse_check_button_released(mb_left)) {
+            show_intro_story = false;
+            buttons_active = true;
+            
+            // Start music and save file
+            audio_play_sound(snd_game_music, 1, true);
+            audio_sound_gain(snd_game_music, global.game_volume * 0.7, 0);
+            
+            var file = file_text_open_write("game_save.dat");
+            file_text_write_string(file, "first_time_complete");
+            file_text_close(file);
+        }
+        return;
+    }
 }
 
 if (transitioning) {
@@ -24,6 +53,11 @@ if (transitioning) {
         room_goto(rm_game); 
     }
     return; 
+}
+
+// Only process button inputs if buttons are active
+if (!buttons_active) {
+    return;
 }
 
 var mouse_x_pos = mouse_x;

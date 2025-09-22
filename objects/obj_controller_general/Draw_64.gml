@@ -64,8 +64,8 @@ if (game_ready && !shop_open && !game_over) {
     
     var timer_text = "[fnt_start_message][fa_left][fa_top][c_white]Time: " + time_display + "\nWave: " + string(current_wave);
     
-    var timer_element = scribble(timer_text);
-    timer_element.fit_to_box(224, 48, false);
+	// Timer
+    var timer_element = scribble(timer_text);    
     timer_element.draw(10, 10);
     
     // Gold counter

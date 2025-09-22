@@ -1,7 +1,7 @@
 /// @description Draw GUI Event obj_controller_menu
 
-// Draw buttons only if fade in is complete and not transitioning
-if (fade_complete && !transitioning) {
+// Draw buttons only if fade in is complete and not transitioning AND buttons are active
+if (fade_complete && !transitioning && buttons_active) {
     // Get button dimensions for fit_to_box
     var button_w = sprite_get_width(spr_menu_button);
     var button_h = sprite_get_height(spr_menu_button);
@@ -59,7 +59,6 @@ if (fade_complete && !transitioning) {
     if (hover_score) {
         var stats_x = button_x + button_width/2 + 20;
         
-        // Mostrar os 3 melhores scores
         if (array_length(global.game_scores) > 0) {
             var scores_text = "[fnt_start_message][fa_left][fa_top][c_white]HIGH SCORES:\n\n";
             
@@ -67,7 +66,6 @@ if (fade_complete && !transitioning) {
                 var score_entry = global.game_scores[i];
                 var rank = string(i + 1) + ". ";
                 
-                // Formatar tempo
                 var time_text;
                 var minutes = floor(score_entry.time / 60);
                 var seconds = score_entry.time % 60;
@@ -83,19 +81,49 @@ if (fade_complete && !transitioning) {
                 scores_text += "   Gold: " + string(score_entry.gold) + "\n\n";
             }
             
-            // Usar fit_to_box para controlar o tamanho
             var text_width = 300;  
             var text_height = 500; 
             
             scribble(scores_text).fit_to_box(text_width, text_height).draw(stats_x, score_y - 150);
         } else {
-            // Se não há scores salvos ainda
             var no_scores_text = "[fnt_start_message][fa_left][fa_middle][c_white]HIGH SCORES:\n\nNo scores yet!\nPlay to set your first score.";
             
-            // Fit to box também para o texto de "no scores"
             scribble(no_scores_text).fit_to_box(300, 200).draw(stats_x, score_y);
         }
     }
+}
+
+// Draw intro story
+if (show_intro_story && fade_complete) {
+    var gui_w = display_get_gui_width();
+    var gui_h = display_get_gui_height();
+    
+    draw_set_color(c_black);
+    draw_set_alpha(0.8);
+    draw_rectangle(0, 0, gui_w, gui_h, false);
+    draw_set_alpha(1.0);
+    
+    var welcome_box_x = gui_w / 2;
+    var welcome_box_y = sprite_get_height(spr_welcome_box) - 30;
+    
+    draw_sprite(spr_welcome_box, 0, welcome_box_x, welcome_box_y);
+    
+    // Update typewriter progress
+    if (typewriter_chars < string_length(intro_story_text)) {
+        typewriter_chars += typewriter_speed;
+        typewriter_chars = min(typewriter_chars, string_length(intro_story_text));
+    }
+    
+    // Scribble with reveal
+    var story_element = scribble("[fnt_start_message][fa_center][fa_middle][c_white]" + intro_story_text);
+    story_element.reveal(typewriter_chars);
+    
+    // Check if typewriter is complete
+    if (typewriter_chars >= string_length(intro_story_text)) {
+        intro_text_complete = true;
+    }
+    
+    story_element.fit_to_box(1312, 300).draw(welcome_box_x, welcome_box_y + 60);
 }
 
 // Draw fade overlay 

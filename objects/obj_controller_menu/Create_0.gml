@@ -50,3 +50,22 @@ if (!variable_global_exists("game_scores")) {
 if (!variable_global_exists("game_volume")) {
     global.game_volume = 1.0; // 100%
 }
+
+// Intro story system
+if (!file_exists("game_save.dat")) {
+    show_intro_story = true;
+    intro_text_complete = false;
+    intro_wait_timer = 0;
+    intro_wait_duration = game_get_speed(gamespeed_fps) * 0.5;
+    buttons_active = false;
+    
+    // Simple typewriter variables
+    typewriter_chars = 0;
+    typewriter_speed = 0.4; // characters per frame
+} else {
+    show_intro_story = false;
+    intro_text_complete = true;
+    buttons_active = true;
+}
+
+intro_story_text = "Year 3050: The government has sent Pablo to defend the earth from a catastrophic threat. A situation like this is completely unprecedented, and Pablo is the perfect man for the job. He has won ever meatball eating competition ever, with a world record of 5000 meatballs. Save the world from meatballification!\nClick to continue.";

@@ -35,22 +35,27 @@ init_game();
 	    enemy_spawn_interval = 0;
 
 	    player_gold = 150; 
-		final_score = 0;
+	    final_score = 0;
 
 	    shop_open = false;
 	    shop_mouse_over = -1;
-    
+
 	    // Shop items system
-	    shop_items = ["speed", "shield", "size", "resistance"];
+	    shop_items = ["speed", "shield", "size", "resistance", "heal_up"];
 	    shop_selected_items = array_create(3);
-    
+
 	    // Size upgrade system
 	    size_upgrade_pending = false;
-		resistance_level = 0;
+	    resistance_level = 0;
+	    heal_up_level = 0; 
 
 	    zigzag_chance = 0; 
 	    zigzag_active = false;
-	    enemies_list = array_create(0);    
+	    enemies_list = array_create(0);
+    
+	    // Heal spawn system
+	    heal_spawned_this_wave = 0;
+	    heal_spawn_times = [];
 	}
 
 	init_spawn();
@@ -104,6 +109,32 @@ init_game();
     
     array_push(enemies_list, enemy);
 }
+		
+	function spawn_heal_item() {
+	    var spawn_side = irandom(3);
+	    var spawn_x, spawn_y;
+    
+	    switch(spawn_side) {
+	        case 0: // Top
+	            spawn_x = irandom(room_width);
+	            spawn_y = -50;
+	            break;
+	        case 1: // Right
+	            spawn_x = room_width + 50;
+	            spawn_y = irandom(room_height);
+	            break;
+	        case 2: // Bottom
+	            spawn_x = irandom(room_width);
+	            spawn_y = room_height + 50;
+	            break;
+	        case 3: // Left
+	            spawn_x = -50;
+	            spawn_y = irandom(room_height);
+	            break;
+	    }
+    
+	    instance_create_layer(spawn_x, spawn_y, "Instances", obj_heal);
+	}
 
 	function end_wave() {
 	    shop_open = true;
@@ -111,20 +142,25 @@ init_game();
 
 	    wave_timer = 0; 
 	    enemies_spawned = 0;
-	    
+	    heal_spawned_this_wave = 0; 
+    
 	    var available_items = [];
 	    array_push(available_items, "speed");
 	    array_push(available_items, "shield");
 	    array_push(available_items, "size");
-    	    
+        
 	    if (resistance_level < 2) {
 	        array_push(available_items, "resistance");
 	    }
-    	   
+    
+	    if (heal_up_level < 2) {
+	        array_push(available_items, "heal_up");
+	    }
+       
 	    shop_selected_items = array_create(3);
 	    var available_copy = array_create(array_length(available_items));
 	    array_copy(available_copy, 0, available_items, 0, array_length(available_items));
-    
+
 	    for (var i = 0; i < 3; i++) {
 	        if (array_length(available_copy) > 0) {
 	            var random_index = irandom(array_length(available_copy) - 1);
@@ -134,7 +170,6 @@ init_game();
 	    }
 
 	    calculate_spawn_interval();
-
 	    enemies_per_wave += 4;
 
 	    if (current_wave >= 4 && (current_wave - 4) % 3 == 0) {
@@ -207,6 +242,10 @@ init_game();
 	                resistance_level++;
 	                damage_to_apply = max(1, damage_to_apply - 1); 
 	                break;
+					
+				case "heal_up":
+				    heal_up_level++;
+				    break;
 	        }
 
 	        close_shop();
@@ -222,6 +261,11 @@ init_game();
 	            if (resistance_level == 0) return 150;
 	            else if (resistance_level == 1) return 300;
 	            return 999999; 
+			case "heal_up": 
+			    if (heal_up_level == 0) return 150;
+			    else if (heal_up_level == 1) return 300;
+			    return 999999;
+				
 	        default: return 50;
 	    }
 	}
@@ -234,6 +278,10 @@ init_game();
 	        case "resistance": 
 	            var next_damage = max(1, damage_to_apply - 1);
 	            return "Reduces enemy damage from " + string(damage_to_apply) + " to " + string(next_damage);
+			case "heal_up": 
+			    var next_heal = 1 + heal_up_level + 1;
+			    return "Increases heal items recovery from " + string(1 + heal_up_level) + " to " + string(next_heal);
+				
 	        default: return "Unknown upgrade";
 	    }
 	}

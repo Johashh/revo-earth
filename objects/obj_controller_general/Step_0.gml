@@ -44,6 +44,19 @@ if (game_ready && global.game_started && !shop_open) {
 	    enemies_spawned++;
 	    enemy_spawn_timer = 0;
 	}
+		
+	// Heal spawn logic
+	if (current_wave >= 1) {
+	    var heals_per_wave = (current_wave >= 4) ? 2 : 1;
+	    var spawn_times = (current_wave >= 4) ? [10 * game_get_speed(gamespeed_fps), 20 * game_get_speed(gamespeed_fps)] : [15 * game_get_speed(gamespeed_fps)];
+    
+	    for (var i = 0; i < array_length(spawn_times); i++) {
+	        if (wave_timer == spawn_times[i] && heal_spawned_this_wave < heals_per_wave) {
+	            spawn_heal_item();
+	            heal_spawned_this_wave++;
+	        }
+	    }
+	}
     
     // Check wave completion
     if (wave_timer >= wave_duration && array_length(enemies_list) == 0) {
